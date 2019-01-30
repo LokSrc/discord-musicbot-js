@@ -33,7 +33,6 @@ var radiostatus;
         soundcloud support
         shuffle command
         playlist support
-        optimize queue text
         read callbacks
 */
 
@@ -117,15 +116,17 @@ function queueReply(message) {
     } 
 
     message.channel.send("Current Queue: ");
-
-    // TODO: Add all songs to one message in user friendly way.
+    
+    let replyMsg = "```";
     for (var i = 0; i < server.queue.length; i++) {
         ytdl.getBasicInfo(server.queue[i], function(err,info) {
-            if (info != null) message.channel.send("  " + info.title);
-            else if (server.queue[i] == RADIO) message.channel.send(RADIONAME);
-            else message.channel.send("CORRUPT SONG AT INDEX: " + i + " (probably a playlist?)");
+            if (info != null) replyMsg += (info.title + "\n");
+            else if (server.queue[i] == RADIO) replyMsg += (radioName + "\n");
+            //else replyMsg += ("CORRUPT SONG\n");
         });
     }
+    replyMsg += "```";
+    message.channel.send(replyMsg);
 }
 
 function playerChecks(message) {

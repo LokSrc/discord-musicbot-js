@@ -5,14 +5,14 @@ Setting bot up
 
     NOTE: YOU MUST HAVE node.js INSTALLED ON YOUR SYSTEM!
     Windows:
-        open install-presequites.bat
+        open install-prerequisites.bat
         Edit config.json to your needs
         open startbot.bat
         bot should now be running!
         NOTE: You need to have python set up as environmental variable!
     
     Linux:
-        execute install-presequites.sh
+        execute install-prerequisites.sh
         edit config.json to your needs
         execute startbot.sh
         bot should now be running!
