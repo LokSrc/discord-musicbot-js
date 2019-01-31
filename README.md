@@ -1,17 +1,19 @@
 This project is simple musicbot used for Discord.
 This project currently supports only youtube links.
+You can contact me on Discord for help! Lokki#8417
 
 Setting bot up
 
     NOTE: YOU MUST HAVE node.js INSTALLED ON YOUR SYSTEM!
     Windows:
+        NOTE: You need to have python set up as environmental variable!
         open install-prerequisites.bat
         Edit config.json to your needs
         open startbot.bat
         bot should now be running!
-        NOTE: You need to have python set up as environmental variable!
     
     Linux:
+        NOTE: To execute a file in Linux environment you first need to run command "sudo chmod +x {filename}" to make it       executable and then you can execute it with command "./{filename}".
         execute install-prerequisites.sh
         edit config.json to your needs
         execute startbot.sh
