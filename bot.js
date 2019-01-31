@@ -170,6 +170,7 @@ function botSetup() {
     bot.on("message", function(message) {    
         if (message.author.equals(bot.user)) return;
         if (!message.content.startsWith(PREFIX)) return;
+        if (message.channel instanceof Discord.DMChannel) return;
 
         // Command arguments are stored in args.
         var args = message.content.substring(PREFIX.length).split(" ");
