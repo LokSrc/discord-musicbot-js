@@ -10,8 +10,6 @@ const ytdl = require('ytdl-core');
 
 const config = require('./config.json');
 
-const fs  = require('fs');
-
 const TOKEN = config.token;
 
 const PREFIX = config.prefix;
@@ -26,6 +24,8 @@ const RADIO = config.radio;
 
 const RADIONAME = config.radioName;
 
+const discordStyles = {"codeblock": "```"};
+
 var radiostatus;
 
 
@@ -33,7 +33,7 @@ var radiostatus;
         soundcloud support
         shuffle command
         playlist support
-        read callbacks
+        Logging
 */
 
 function play(connection, message) { 
@@ -57,6 +57,7 @@ function play(connection, message) {
     // Make sure we have correct volume for current server and update song queue
     server.dispatcher.setVolume(server.volume);
     server.queue.shift();
+    server.queueN.shift();
 
     // When song ends play next or if queue is empty leave voice channel.
     server.dispatcher.on("end", function() {
@@ -79,7 +80,10 @@ function resetBot(message) {
     .then(() => bot.destroy())
     .then(() => servers = {})
     .then(() => bot = new Discord.Client())
-    .then(() => botSetup());
+    .then(() => botSetup())
+    .catch(function(error){
+        console.log(error);
+    });
 }
 
 function songQueued(message, link, youtube) {
@@ -89,11 +93,16 @@ function songQueued(message, link, youtube) {
     */
     if (youtube) {
         ytdl.getBasicInfo(link, function(err,info) {
+            if (err) {
+                console.log(err);
+                return;
+            }
             if (info == null) {
                 message.reply('Invalid link (playlists not supported yet)...');
                 return;
             }
             message.channel.send('Queued: ' + info.title);
+            servers[message.guild.id].queueN.push(info.title);
         });
     }
 }
@@ -110,23 +119,18 @@ function queueReply(message) {
         return;
     }
 
-    if (typeof server.queue == "undefined" || server.queue.length == 0) {
+    if (typeof server.queueN == "undefined" || server.queueN.length == 0) {
         message.channel.send("Queue is empty.");
         return;
     } 
 
     message.channel.send("Current Queue: ");
-    
-    let replyMsg = "```";
-    for (var i = 0; i < server.queue.length; i++) {
-        ytdl.getBasicInfo(server.queue[i], function(err,info) {
-            if (info != null) replyMsg += (info.title + "\n");
-            else if (server.queue[i] == RADIO) replyMsg += (radioName + "\n");
-            //else replyMsg += ("CORRUPT SONG\n");
-        });
+    var msg = discordStyles.codeblock;
+    for (var i = 0; i < server.queueN.length; i++) {
+        msg += server.queueN[i] + "\n";
     }
-    replyMsg += "```";
-    message.channel.send(replyMsg);
+    msg += discordStyles.codeblock;
+    message.channel.send(msg);
 }
 
 function playerChecks(message) {
@@ -139,6 +143,7 @@ function playerChecks(message) {
     // Lets setup player for our server if there is not one
     if (!servers[message.guild.id]) servers[message.guild.id] = {
         queue: [],
+        queueN: [],
         paused: false,
         volume: VOLUME
     };
@@ -214,6 +219,7 @@ function botSetup() {
                 
                 bot.user.setActivity(STATUS);
                 server.queue = [];
+                server.queueN = [];
                 server.paused = false;
                 if(message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
                 break;
@@ -306,6 +312,7 @@ function botSetup() {
                 var ready = playerChecks(message);
                 if (!ready) return;
                 servers[message.guild.id].queue.push(RADIO);
+                servers[message.guild.id].queueN.push(RADIONAME);
                 message.reply(RADIONAME + " queued!");
                 // Make the bot join users voice channel and play first song of queue
                 if (!message.guild.voiceConnection) message.member.voiceChannel.join().then(function(connection) {
