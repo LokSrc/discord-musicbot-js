@@ -1,6 +1,5 @@
 This project is simple musicbot used for Discord.
 This project currently supports only youtube links.
-You can contact me on Discord for help! Lokki#8417
 
 Setting bot up
 

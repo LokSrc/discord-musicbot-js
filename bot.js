@@ -56,6 +56,12 @@ function play(connection, message) {
 
     // Make sure we have correct volume for current server and update song queue
     server.dispatcher.setVolume(server.volume);
+
+    // If looping is set to true -> loop playlist
+    if (server.looping) {
+        server.queue.push(server.queue[0]);
+        server.queueN.push(server.queueN[0]);
+    }
     server.queue.shift();
     server.queueN.shift();
 
@@ -133,20 +139,24 @@ function queueReply(message) {
     message.channel.send(msg);
 }
 
+function initPlayer(message) {
+    // Lets setup player for our server if there is not one
+    if (!servers[message.guild.id]) servers[message.guild.id] = {
+        queue: [],
+        queueN: [],
+        looping: false,
+        paused: false,
+        volume: VOLUME
+    };
+}
+
 function playerChecks(message) {
     // Will verify we can play some music
     if(!message.member.voiceChannel) {
         message.channel.send("You must be in a voice channel");
         return false;
-    }   
-
-    // Lets setup player for our server if there is not one
-    if (!servers[message.guild.id]) servers[message.guild.id] = {
-        queue: [],
-        queueN: [],
-        paused: false,
-        volume: VOLUME
-    };
+    }
+    initPlayer(message);   
     return true;
 }
 
@@ -222,6 +232,7 @@ function botSetup() {
                 server.queue = [];
                 server.queueN = [];
                 server.paused = false;
+                server.looping = false;
                 if(message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
                 break;
 
@@ -320,13 +331,22 @@ function botSetup() {
                     play(connection, message);
                 });
                 break;
+            
+            case "loop":
+                initPlayer(message);
+                var server = servers[message.guild.id]
+                server.looping = !server.looping;
+
+                if (server.looping) message.reply("Now looping the queue!");
+                else message.reply("Looping turned off!");
+                break;
 
             case "help":
                 // TODO: Make this message more user friendly
                 if (radiostatus) {
-                    message.reply("reset, restart, roast, help, play, stop, volume, skip, q(ueue), p(ause), r(esume), " + RADIONAME.toLowerCase());
+                    message.reply("reset, restart, roast, help, play, stop, volume, skip, q(ueue), p(ause), r(esume), loop, " + RADIONAME.toLowerCase());
                 } else {
-                    message.reply("reset, restart, roast, help, play, stop, volume, skip, q(ueue), p(ause), r(esume)");
+                    message.reply("reset, restart, roast, help, play, stop, volume, skip, q(ueue), p(ause), r(esume), loop");
                 }
                 break;
 
