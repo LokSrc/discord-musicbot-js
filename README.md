@@ -1,5 +1,6 @@
 This project is simple musicbot used for Discord.
 This project currently supports only youtube links.
+You can contact me on Discord for help! Lokki#8417
 
 Setting bot up
 
@@ -12,7 +13,7 @@ Setting bot up
         bot should now be running!
     
     Linux:
-        NOTE: To execute a file in Linux environment you first need to run command "sudo chmod +x {filename}" to make it       executable and then you can execute it with command "./{filename}".
+         NOTE: To execute a file in Linux environment you first need to run command "sudo chmod +x {filename}" to make it executable and then you can execute it with command "./{filename}".
         execute install-prerequisites.sh
         edit config.json to your needs
         execute startbot.sh
@@ -55,6 +56,8 @@ Commands:
     resume - used to resume bot
 
     help - used to display all the commands
+
+    loop - used to enable/disable looping current queue. NOTE: Currently playing song is not part of queue!!
 
     radioname - if you have set up radio you can play it with this command NOTE: radioname is what you have set up in config!
 
