@@ -2,3 +2,4 @@ node*
 package*
 ban*
 scrape*
+*.log

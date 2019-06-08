@@ -29,11 +29,17 @@ Config.json
 
     volume - put here your preferred bot volume (I prefer "0.5")
 
-    roast - message displayed with roast command
-
     radio - URL you want to stream from (This can be radio station for example)
 
     radioname - Will be the name for radio you have chosen. Radio will be queued with (prefix+radioname, ex. "-Metro95.1"). Don't use spaces in radioname!!
+
+    noLinksChannel - set this to match the id of the text channel where posting links is forbidden
+
+    movemeChannel - set this to match the id of the voice channel where member is being moved after using "moveme" command
+
+    movemeRole - set this to match the id of the role required to use "moveme" command
+
+
 
 Commands:
 
@@ -47,7 +53,7 @@ Commands:
 
     reset/restart - used to completely reset the bot if something is not correct.
 
-    roast - "fun" command to roast yourself
+    roast - random roast Ex. "-roast LokSrc"
 
     queue - used to ask bot current queue
 
@@ -58,6 +64,8 @@ Commands:
     help - used to display all the commands
 
     loop - used to enable/disable looping current queue. NOTE: Currently playing song is not part of queue!!
+
+    moveme - used to move member from one voice channel to "movemeChannel"
 
     radioname - if you have set up radio you can play it with this command NOTE: radioname is what you have set up in config!
 

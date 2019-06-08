@@ -5,5 +5,8 @@
     "volume": 0.5,
     "roast": "",
     "radio": "",
-    "radioName": ""
+    "radioName": "",
+    "noLinksChannel": "",
+    "movemeChannel": "",
+    "movemeRole": ""
 }

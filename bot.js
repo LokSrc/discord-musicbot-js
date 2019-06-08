@@ -18,13 +18,21 @@ const STATUS = config.status;
 
 const VOLUME = config.volume;
 
-const roastMessage = config.roast;
+const roasts = require('./roasts.json').roasts.array;
 
 const RADIO = config.radio;
 
 const RADIONAME = config.radioName;
 
+const noLinksChannel = config.noLinksChannel;
+
+const movemeChannel = config.moveme;
+
+const movemeRole = config.movemeRole;
+
 const discordStyles = {"codeblock": "```"};
+
+const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvolume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
 
 var radiostatus;
 
@@ -150,6 +158,15 @@ function initPlayer(message) {
     };
 }
 
+function checkLink(message) {
+    // Checks that links are not posted in channel "noLinksChannel"
+    if (message.channel.id == noLinksChannel && (message.content.includes('www.') || message.content.includes('http') || message.content.includes('.fi') || message.content.includes('.com') || message.content.includes('.net'))) {
+        message.author.send('Links are not allowed in this channel!');
+        message.delete();
+    }
+    return;
+}
+
 function playerChecks(message) {
     // Will verify we can play some music
     if(!message.member.voiceChannel) {
@@ -179,13 +196,30 @@ function botSetup() {
     bot.on("error", (e) => console.log(e));
     bot.on("message", function(message) {    
         if (message.author.equals(bot.user)) return;
-        if (!message.content.startsWith(PREFIX)) return;
+        if (!message.content.startsWith(PREFIX)) {
+            checkLink(message);
+            return;
+        };
         if (message.channel instanceof Discord.DMChannel) return;
 
         // Command arguments are stored in args.
         var args = message.content.substring(PREFIX.length).split(" ");
 
         switch (args[0].toLowerCase())  {
+            case "moveme":
+                // If moveme is not fully activated from config.json -> return
+                if (movemeChannel = "") return;
+                if (movemeRole = "") return;
+
+                var hasRole = message.member.roles.has(movemeRole)
+                if (message.member.voiceChannel && hasRole) {
+                    console.log("Moving " + message.author.username + " to ") // TODO
+                    message.member.setVoiceChannel(movemeChannel);
+                };
+                message.delete();
+                break;
+
+            case "p":    
             case "play":
                 if(!args[1]) {
                     message.channel.send("Arguments missing!");
@@ -207,8 +241,10 @@ function botSetup() {
                     play(connection, message);
                 });
                 break;
-
+            
+            case "s":
             case "skip":
+                // TODO: skip by index
                 if (!servers[message.guild.id]) {
                     message.channel.send("Queue something first.");
                     return;
@@ -244,7 +280,7 @@ function botSetup() {
                 var server = servers[message.guild.id];
 
                 // Reply with volume if value is not given else we will try to set volume to match value
-                if(args.length < 2) {
+                if (args.length < 2) {
                     message.reply("Volume is " + server.volume);
                 } else {
                     try {
@@ -268,7 +304,14 @@ function botSetup() {
                     break;   
 
             case "roast":
-                message.reply(roastMessage, {tts:true});
+                if (args.length < 2) {
+                    message.author.send("Usage of this command is 'roast nameOfPersonBeingRoasted'");
+                    message.delete();
+                    return;
+                }
+                var ranLen = roasts.length;
+                message.channel.send(roasts[Math.floor((Math.random() * ranLen) + 1)].replace("${roastedName}", args[1]).replace("${roastedName}", args[1]), {tts:true}); // TODO: Multiple case properly
+                message.delete();
                 break;
 
             case "queue":
@@ -333,8 +376,9 @@ function botSetup() {
                 break;
             
             case "loop":
+                // TODO: Fix current song
                 initPlayer(message);
-                var server = servers[message.guild.id]
+                var server = servers[message.guild.id];
                 server.looping = !server.looping;
 
                 if (server.looping) message.reply("Now looping the queue!");
@@ -342,11 +386,10 @@ function botSetup() {
                 break;
 
             case "help":
-                // TODO: Make this message more user friendly
                 if (radiostatus) {
-                    message.reply("reset, restart, roast, help, play, stop, volume, skip, q(ueue), p(ause), r(esume), loop, " + RADIONAME.toLowerCase());
+                    message.reply(discordStyles.codeblock + helpMsg + discordStyles.codeblock);
                 } else {
-                    message.reply("reset, restart, roast, help, play, stop, volume, skip, q(ueue), p(ause), r(esume), loop");
+                    message.reply(discordStyles.codeblock + helpMsg  + RADIONAME.toLowerCase() + discordStyles.codeblock);
                 }
                 break;
 
