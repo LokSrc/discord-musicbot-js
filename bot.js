@@ -12,6 +12,8 @@ const config = require('./config.json');
 
 const Entry = require('./entry.js');
 
+const roasts = require('./roasts.json').roasts.array;
+
 const TOKEN = config.token;
 
 const PREFIX = config.prefix;
@@ -19,8 +21,6 @@ const PREFIX = config.prefix;
 const STATUS = config.status;
 
 const VOLUME = config.volume;
-
-const roasts = require('./roasts.json').roasts.array;
 
 const RADIO = config.radio;
 
