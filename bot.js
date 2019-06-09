@@ -263,8 +263,8 @@ function botSetup() {
                 if (args.length > 1) {
                   try {
                     var index = Number(args[1]);
-                    if (index < 1) {
-                        message.reply("Indexing starts from 1");
+                    if (index < 1 || index > server.queue.length - 1) {
+                        message.reply("Check your index...");
                         return;
                     }
                     server.queue.splice(index,1);
@@ -388,9 +388,11 @@ function botSetup() {
                     message.channel.send("Invalid command");
                     return;
                 }
+                var queue = servers[message.guild.id].queue;
                 var ready = playerChecks(message);
                 if (!ready) return;
-                servers[message.guild.id].queue.push(RADIO); // TODO: Test radio
+                queue.push(new Entry(RADIO, message.author));
+                queue[queue.length - 1].setName(RADIONAME);
                 message.reply(RADIONAME + " queued!");
                 // Make the bot join users voice channel and play first song of queue
                 if (!message.guild.voiceConnection) message.member.voiceChannel.join().then(function(connection) {
