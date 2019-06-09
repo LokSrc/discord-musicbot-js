@@ -32,9 +32,11 @@ const movemeChannel = config.moveme;
 
 const movemeRole = config.movemeRole;
 
+const adminRole = config.adminRole;
+
 const discordStyles = {"codeblock": "```"};
 
-const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvol/volume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
+const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvol/volume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\nshuffle - shuffles current queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
 
 const voteSkip = false;
 
@@ -42,11 +44,8 @@ var radiostatus;
 
 
 /* TODO:
-        soundcloud support
-        shuffle command
         playlist support
         Logging
-        Admin role
 */
 
 function play(connection, message) { 
@@ -187,6 +186,22 @@ function playerChecks(message) {
     return true;
 }
 
+function shuffle(a) {
+    /* Fisher-Yales shuffle algorithm
+     * Shuffles array */
+    var currentSong = a[0];
+    a.shift();
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    a.unshift(currentSong);
+    return a;
+}
+
 if (RADIO != "" && RADIONAME != "") {
     radiostatus = true;
 } else {
@@ -271,7 +286,7 @@ function botSetup() {
                         message.reply("Check your index...");
                         return;
                     }
-                    if (!voteSkip || server.queue[index].getAuthor().id == message.author.id) {
+                    if (!voteSkip || message.member.roles.has(adminRole) || server.queue[index].getAuthor().id == message.author.id) {
                         if (index == 0) server.dispatcher.end();
                         else server.queue.splice(index,1);
                         message.channel.send("Removed song from index: " + index.toString());
@@ -295,7 +310,10 @@ function botSetup() {
             case "stop":
                 if (!servers[message.guild.id]) return;
                 var server = servers[message.guild.id];
-                
+                if (adminRole != "" && !message.member.roles.has(adminRole)) {
+                    message.reply("You are not allowed to use this command!");
+                    return;
+                }
                 bot.user.setActivity(STATUS);
                 server.queue = [];
                 server.paused = false;
@@ -332,8 +350,12 @@ function botSetup() {
 
             case "reset":
             case "restart":
-                    resetBot(message);
-                    break;   
+                if (adminRole != "" && !message.member.roles.has(adminRole)) {
+                    message.reply("You are not allowed to use this command!");
+                    return;
+                }
+                resetBot(message);
+                break;   
 
             case "roast":
                 if (args.length < 2) {
@@ -415,6 +437,16 @@ function botSetup() {
 
                 if (server.looping) message.reply("Now looping the queue!");
                 else message.reply("Looping turned off!");
+                break;
+
+            case "shuffle":
+                var server = servers[message.guild.id];
+                if (typeof server.queue != "undefined" && server.queue.length > 0) {
+                    shuffle(server.queue);
+                    message.reply("Shuffling done!");
+                } else {
+                    message.channel.send("Queue something first!");
+                }
                 break;
 
             case "help":

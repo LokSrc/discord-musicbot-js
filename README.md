@@ -41,6 +41,8 @@ Config.json
 
     movemeRole - set this to match the id of the role required to use "moveme" command
 
+    adminRole - some functionalities like stop and reset are only allowed to members with this role. If this is left empty then everyone can use all commands
+
 
 
 Commands:
@@ -66,6 +68,8 @@ Commands:
     help - used to display all the commands
 
     loop - used to enable/disable looping current queue (includes currently playing song)
+
+    shuffle - shuffles current music queue
 
     moveme - used to move member from one voice channel to "movemeChannel". needs to be set-up in config.json
 

@@ -7,5 +7,6 @@
     "radioName": "",
     "noLinksChannel": "",
     "movemeChannel": "",
-    "movemeRole": ""
+    "movemeRole": "",
+    "adminRole": ""
 }
