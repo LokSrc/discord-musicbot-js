@@ -2,6 +2,8 @@ This project is simple musicbot used for Discord.
 This project currently supports only youtube links.
 You can contact me on Discord for help! Lokki#8417
 
+Before setting bot up you should lookup this site: https://support.discordapp.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-
+
 Setting bot up
 
     NOTE: YOU MUST HAVE node.js INSTALLED ON YOUR SYSTEM!
@@ -45,7 +47,7 @@ Commands:
 
     play - used to add song to queue Ex. "-play https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-    skip - used to skip currently playing song
+    skip - used to skip currently playing song. can be used to skip song from queue also Ex. "-skip 1" skips song from index 1
 
     stop - used to disconnect bot from voice channel
 
@@ -63,9 +65,9 @@ Commands:
 
     help - used to display all the commands
 
-    loop - used to enable/disable looping current queue. NOTE: Currently playing song is not part of queue!!
+    loop - used to enable/disable looping current queue (includes currently playing song)
 
-    moveme - used to move member from one voice channel to "movemeChannel"
+    moveme - used to move member from one voice channel to "movemeChannel". needs to be set-up in config.json
 
     radioname - if you have set up radio you can play it with this command NOTE: radioname is what you have set up in config!
 

@@ -65,16 +65,15 @@ function play(connection, message) {
     // Make sure we have correct volume for current server and update song queue
     server.dispatcher.setVolume(server.volume);
 
-    // If looping is set to true -> loop playlist
-    if (server.looping) {
-        server.queue.push(server.queue[0]);
-        server.queueN.push(server.queueN[0]);
-    }
-    server.queue.shift();
-    server.queueN.shift();
-
     // When song ends play next or if queue is empty leave voice channel.
     server.dispatcher.on("end", function() {
+        // If looping is set to true -> loop playlist
+        if (server.looping) {
+            server.queue.push(server.queue[0]);
+            server.queueN.push(server.queueN[0]);
+        }
+        server.queue.shift();
+        server.queueN.shift();
         if(server.queue[0]) play(connection, message);
         else {
             server.dispatcher = false;
@@ -141,7 +140,8 @@ function queueReply(message) {
     message.channel.send("Current Queue: ");
     var msg = discordStyles.codeblock;
     for (var i = 0; i < server.queueN.length; i++) {
-        msg += server.queueN[i] + "\n";
+        if (i == 0) msg += "Current song: " + server.queueN[i] + "\n";
+        else msg += i.toString() + ": " + server.queueN[i] + "\n";
     }
     msg += discordStyles.codeblock;
     message.channel.send(msg);
@@ -244,15 +244,33 @@ function botSetup() {
             
             case "s":
             case "skip":
-                // TODO: skip by index
                 if (!servers[message.guild.id]) {
                     message.channel.send("Queue something first.");
                     return;
                 };
                 var server = servers[message.guild.id];
 
+                // If skipping index is specified we will try to skip it
+                if (args.length > 1) {
+                  try {
+                    var index = Number(args[1]);
+                    if (index < 1) {
+                        message.reply("Indexing starts from 1");
+                        return;
+                    }
+                    server.queue.splice(index,1);
+                    server.queueN.splice(index,1);
+                    message.channel.send("Removed song from index: " + index.toString())
+                    return;
+                  }  catch (e) {
+                    console.log(e);
+                    message.reply("Queue doesn't include that index...")
+                    return;
+                  }
+                }
+
                 // If something is currently playing we will skip it
-                if(server.dispatcher) {
+                if (server.dispatcher) {
                     server.dispatcher.end();
                     message.channel.send("Skipped 1 song!");
                 } else {
@@ -310,7 +328,7 @@ function botSetup() {
                     return;
                 }
                 var ranLen = roasts.length;
-                message.channel.send(roasts[Math.floor((Math.random() * ranLen) + 1)].replace("${roastedName}", args[1]).replace("${roastedName}", args[1]), {tts:true}); // TODO: Multiple case properly
+                message.channel.send(roasts[Math.floor((Math.random() * ranLen) + 1)].replace(/\$\{roastedName\}/g, args[1]), {tts:true});
                 message.delete();
                 break;
 
@@ -376,7 +394,6 @@ function botSetup() {
                 break;
             
             case "loop":
-                // TODO: Fix current song
                 initPlayer(message);
                 var server = servers[message.guild.id];
                 server.looping = !server.looping;
