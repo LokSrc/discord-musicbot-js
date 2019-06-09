@@ -10,6 +10,8 @@ const ytdl = require('ytdl-core');
 
 const config = require('./config.json');
 
+const Entry = require('./entry.js');
+
 const TOKEN = config.token;
 
 const PREFIX = config.prefix;
@@ -46,16 +48,18 @@ var radiostatus;
 
 function play(connection, message) { 
     var server = servers[message.guild.id];
+    var song = server.queue[0];
 
     // Lets make sure url is youtube link and then stream it to current server
-    if (ytdl.validateURL(server.queue[0])) {
-        server.dispatcher = connection.playStream(ytdl(server.queue[0], {filter: "audioonly"}));
+    if (song instanceof Entry && ytdl.validateURL(song.getLink())) {
+        server.dispatcher = connection.playStream(ytdl(song.getLink(), {filter: "audioonly"}));
 
         // Set bot's status to match song it is playing
-        ytdl.getBasicInfo(server.queue[0], function(err,info) {
+        /*ytdl.getBasicInfo(server.queue[0], function(err,info) {
             if (info == null || err) return;
             bot.user.setActivity(info.title);
-        });
+        });*/
+        bot.user.setActivity(song.getName(), "STREAMING");
 
     } else if (server.queue[0] == RADIO) {
         server.dispatcher = connection.playFile(RADIO);
@@ -70,10 +74,9 @@ function play(connection, message) {
         // If looping is set to true -> loop playlist
         if (server.looping) {
             server.queue.push(server.queue[0]);
-            server.queueN.push(server.queueN[0]);
         }
         server.queue.shift();
-        server.queueN.shift();
+
         if(server.queue[0]) play(connection, message);
         else {
             server.dispatcher = false;
@@ -99,11 +102,13 @@ function resetBot(message) {
     });
 }
 
-function songQueued(message, link, youtube) {
+function songQueued(message, link, youtube, index) {
     /*
         Function that will tell the user that song has been succesfully
         queued or in case of error will notice user about it.
     */
+    var queue = servers[message.guild.id].queue
+    if (!queue[index] instanceof Entry) return; // TODO: Log this
     if (youtube) {
         ytdl.getBasicInfo(link, function(err,info) {
             if (err) {
@@ -112,10 +117,12 @@ function songQueued(message, link, youtube) {
             }
             if (info == null) {
                 message.reply('Invalid link (playlists not supported yet)...');
+                queue[index].setName("Not supported");
                 return;
             }
             message.channel.send('Queued: ' + info.title);
-            servers[message.guild.id].queueN.push(info.title);
+            queue[index].setName(info.title);
+            if (index == 0) bot.user.setActivity(info.title);
         });
     }
 }
@@ -132,16 +139,18 @@ function queueReply(message) {
         return;
     }
 
-    if (typeof server.queueN == "undefined" || server.queueN.length == 0) {
+    if (typeof server.queue == "undefined" || server.queue.length == 0) {
         message.channel.send("Queue is empty.");
         return;
     } 
 
     message.channel.send("Current Queue: ");
     var msg = discordStyles.codeblock;
-    for (var i = 0; i < server.queueN.length; i++) {
-        if (i == 0) msg += "Current song: " + server.queueN[i] + "\n";
-        else msg += i.toString() + ": " + server.queueN[i] + "\n";
+    for (var i = 0; i < server.queue.length; i++) {
+        let song = server.queue[i];
+        if (!song instanceof Entry) continue;
+        if (i == 0) msg += "Current song: " + song.getName() + " - Queued by: " + song.getAuthor().username + "\n";
+        else msg += i.toString() + ": " + song.getName() + " - Queued by: " + song.getAuthor().username + "\n";
     }
     msg += discordStyles.codeblock;
     message.channel.send(msg);
@@ -151,7 +160,6 @@ function initPlayer(message) {
     // Lets setup player for our server if there is not one
     if (!servers[message.guild.id]) servers[message.guild.id] = {
         queue: [],
-        queueN: [],
         looping: false,
         paused: false,
         volume: VOLUME
@@ -228,9 +236,10 @@ function botSetup() {
                 var ready = playerChecks(message);
                 if (!ready) return;
                 // Lets queue a song if it is recognized as youtube link
+                var queue = servers[message.guild.id].queue;
                 if (ytdl.validateURL(args[1])) {
-                    servers[message.guild.id].queue.push(args[1]);
-                    songQueued(message, args[1], true);
+                    queue.push(new Entry(args[1], message.author));
+                    songQueued(message, args[1], true, queue.length - 1);
                 } else {
                     message.channel.send("Please provide valid link");
                     return;
@@ -243,7 +252,7 @@ function botSetup() {
                 break;
             
             case "s":
-            case "skip":
+            case "skip": // TODO: voteskip
                 if (!servers[message.guild.id]) {
                     message.channel.send("Queue something first.");
                     return;
@@ -259,11 +268,9 @@ function botSetup() {
                         return;
                     }
                     server.queue.splice(index,1);
-                    server.queueN.splice(index,1);
                     message.channel.send("Removed song from index: " + index.toString())
                     return;
-                  }  catch (e) {
-                    console.log(e);
+                  } catch (e) {
                     message.reply("Queue doesn't include that index...")
                     return;
                   }
@@ -284,7 +291,6 @@ function botSetup() {
                 
                 bot.user.setActivity(STATUS);
                 server.queue = [];
-                server.queueN = [];
                 server.paused = false;
                 server.looping = false;
                 if(message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
@@ -384,8 +390,7 @@ function botSetup() {
                 }
                 var ready = playerChecks(message);
                 if (!ready) return;
-                servers[message.guild.id].queue.push(RADIO);
-                servers[message.guild.id].queueN.push(RADIONAME);
+                servers[message.guild.id].queue.push(RADIO); // TODO: Test radio
                 message.reply(RADIONAME + " queued!");
                 // Make the bot join users voice channel and play first song of queue
                 if (!message.guild.voiceConnection) message.member.voiceChannel.join().then(function(connection) {
