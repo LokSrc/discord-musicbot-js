@@ -34,7 +34,9 @@ const movemeRole = config.movemeRole;
 
 const discordStyles = {"codeblock": "```"};
 
-const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvolume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
+const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvol/volume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
+
+const voteSkip = false;
 
 var radiostatus;
 
@@ -44,6 +46,7 @@ var radiostatus;
         shuffle command
         playlist support
         Logging
+        Admin role
 */
 
 function play(connection, message) { 
@@ -55,18 +58,17 @@ function play(connection, message) {
         server.dispatcher = connection.playStream(ytdl(song.getLink(), {filter: "audioonly"}));
 
         // Set bot's status to match song it is playing
-        /*ytdl.getBasicInfo(server.queue[0], function(err,info) {
+        ytdl.getBasicInfo(song.getLink(), function(err,info) {
             if (info == null || err) return;
             bot.user.setActivity(info.title);
-        });*/
-        bot.user.setActivity(song.getName(), "STREAMING");
+        });
 
     } else if (server.queue[0] == RADIO) {
         server.dispatcher = connection.playFile(RADIO);
         bot.user.setActivity(RADIONAME);
     }
 
-    // Make sure we have correct volume for current server and update song queue
+    // Make sure we have correct volume for current server
     server.dispatcher.setVolume(server.volume);
 
     // When song ends play next or if queue is empty leave voice channel.
@@ -216,8 +218,8 @@ function botSetup() {
         switch (args[0].toLowerCase())  {
             case "moveme":
                 // If moveme is not fully activated from config.json -> return
-                if (movemeChannel = "") return;
-                if (movemeRole = "") return;
+                if (movemeChannel == "") return;
+                if (movemeRole == "") return;
 
                 var hasRole = message.member.roles.has(movemeRole)
                 if (message.member.voiceChannel && hasRole) {
@@ -239,7 +241,7 @@ function botSetup() {
                 var queue = servers[message.guild.id].queue;
                 if (ytdl.validateURL(args[1])) {
                     queue.push(new Entry(args[1], message.author));
-                    songQueued(message, args[1], true, queue.length - 1);
+                    songQueued(message, args[1], true, queue.length - 1); // TODO: Better implementation of this
                 } else {
                     message.channel.send("Please provide valid link");
                     return;
@@ -252,36 +254,41 @@ function botSetup() {
                 break;
             
             case "s":
-            case "skip": // TODO: voteskip
+            case "skip":
                 if (!servers[message.guild.id]) {
                     message.channel.send("Queue something first.");
                     return;
                 };
                 var server = servers[message.guild.id];
 
-                // If skipping index is specified we will try to skip it
-                if (args.length > 1) {
-                  try {
-                    var index = Number(args[1]);
-                    if (index < 1 || index > server.queue.length - 1) {
+                // We will try to skip targeted song
+                try {
+                    var index;
+                    if (args.length > 1) index = Number(args[1]);
+                    else index = 0;
+                
+                    if (index < 0 || index > server.queue.length - 1) {
                         message.reply("Check your index...");
                         return;
                     }
-                    server.queue.splice(index,1);
-                    message.channel.send("Removed song from index: " + index.toString())
-                    return;
-                  } catch (e) {
-                    message.reply("Queue doesn't include that index...")
-                    return;
-                  }
+                    if (!voteSkip || server.queue[index].getAuthor().id == message.author.id) {
+                        if (index == 0) server.dispatcher.end();
+                        else server.queue.splice(index,1);
+                        message.channel.send("Removed song from index: " + index.toString());
+                        return;
+                    } else {
+                        server.queue[index].addVote(message.author.id);
+                        var votesNeeded = 10; // TODO: Correct rate
+                        if (votesNeeded < server.queue[index].getVotes()) {
+                            server.queue.splice(index,1);
+                            message.channel.send("Removed song from index: " + index.toString());
+                            return;
+                        }
+                        message.channel.send("Voteskip started for: " + server.queue[index].getName() + ". Votes received: " + server.queue[index].getVotes() + "/" + votesNeeded);
+                        return;
                 }
-
-                // If something is currently playing we will skip it
-                if (server.dispatcher) {
-                    server.dispatcher.end();
-                    message.channel.send("Skipped 1 song!");
-                } else {
-                    message.channel.send("No songs to skip!");
+                } catch (e) {
+                    message.reply("Queue doesn't include that index...");
                 }
                 break;
 
@@ -295,7 +302,8 @@ function botSetup() {
                 server.looping = false;
                 if(message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
                 break;
-
+            
+            case "vol":
             case "volume":
                 if (!servers[message.guild.id]) {
                     message.channel.send("Queue something first.");

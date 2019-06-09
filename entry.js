@@ -23,10 +23,10 @@ class Entry {
     }
 
     getVotes() {
-        return this.voters.length();
+        return this.voters.length;
     }
 
-    addVote(voter) {
+    addVote(voter) { // TODO: Check this
         if (voter in this.voters) {
             return false;
         }
