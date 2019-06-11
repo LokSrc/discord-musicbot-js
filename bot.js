@@ -4,6 +4,25 @@
     Author: Marius Niemenmaa, https://github.com/LokSrc/
 */
 
+const winston = require('winston');
+
+const logger = winston.createLogger({
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+    ),
+    transports : [
+        new winston.transports.Console({format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.prettyPrint()
+        )}), 
+        new winston.transports.File({filename: "logs/combined.log", timestamp: true}),
+        new winston.transports.File({filename: "logs/error.log", level: 'error', timestamp: true})]
+
+})
+
+logger.info('Loading dependencies...');
+
 const Discord = require('discord.js');
 
 const ytdl = require('ytdl-core');
@@ -13,6 +32,9 @@ const config = require('./config.json');
 const Entry = require('./entry.js');
 
 const roasts = require('./roasts.json').roasts.array;
+
+logger.info('Dependencies loaded!');
+logger.info('Loading config.json...');
 
 const TOKEN = config.token;
 
@@ -28,11 +50,13 @@ const RADIONAME = config.radioName;
 
 const noLinksChannel = config.noLinksChannel;
 
-const movemeChannel = config.moveme;
+const movemeChannel = config.movemeChannel;
 
 const movemeRole = config.movemeRole;
 
 const adminRole = config.adminRole;
+
+logger.info('Config.json loaded!');
 
 const discordStyles = {"codeblock": "```"};
 
@@ -45,7 +69,6 @@ var radiostatus;
 
 /* TODO:
         playlist support
-        Logging
 */
 
 function play(connection, message) { 
@@ -98,8 +121,8 @@ function resetBot(message) {
     .then(() => servers = {})
     .then(() => bot = new Discord.Client())
     .then(() => botSetup())
-    .catch(function(error){
-        console.log(error);
+    .catch(function(err){
+        logger.error(err.name + "\n" + err.message + "\n" + err.stack);
     });
 }
 
@@ -113,7 +136,7 @@ function songQueued(message, link, youtube, index) {
     if (youtube) {
         ytdl.getBasicInfo(link, function(err,info) {
             if (err) {
-                console.log(err);
+                logger.error(err.name + "\n" + err.message + "\n" + err.stack);
                 return;
             }
             if (info == null) {
@@ -159,6 +182,7 @@ function queueReply(message) {
 
 function initPlayer(message) {
     // Lets setup player for our server if there is not one
+    logger.info(`Initializing player for guild: ${message.guild.name}`)
     if (!servers[message.guild.id]) servers[message.guild.id] = {
         queue: [],
         looping: false,
@@ -170,6 +194,7 @@ function initPlayer(message) {
 function checkLink(message) {
     // Checks that links are not posted in channel "noLinksChannel"
     if (message.channel.id == noLinksChannel && (message.content.includes('www.') || message.content.includes('http') || message.content.includes('.fi') || message.content.includes('.com') || message.content.includes('.net'))) {
+        logger.info('Message containing link deleted!');
         message.author.send('Links are not allowed in this channel!');
         message.delete();
     }
@@ -202,9 +227,23 @@ function shuffle(a) {
     return a;
 }
 
+function findVoiceChannel(guild, id, returnChannel) {
+    /* Searches for given voice channel by id
+     * param: guild, id, returnChannel
+     * return: Channel
+     */
+    var channels = guild.channels;
+    channels.forEach(channel => {
+        if (channel.id == id) returnChannel = channel;
+    });
+    return returnChannel;
+}
+
 if (RADIO != "" && RADIONAME != "") {
+    logger.info('Radio enabled!');
     radiostatus = true;
 } else {
+    logger.info('Radio disabled!');
     radiostatus = false;
 }
 
@@ -217,9 +256,12 @@ function botSetup() {
         the functionality our bot has. This function is
         our so called "commandhandler".
     */
-    bot.on("ready", () => bot.user.setActivity(STATUS));
-    bot.on("error", (e) => console.log(e));
-    bot.on("message", function(message) {    
+    bot.on("ready", () => {
+        bot.user.setActivity(STATUS);
+        logger.info('Bot is ready!')});
+    bot.on("error", (err) => logger.error(err.name + "\n" + err.message + "\n" + err.stack));
+    bot.on("message", function(message) {  
+        logger.info(`Discord message [${message.guild.name}][${message.channel.name}] ${message.author.username}: ${message.content}`);  
         if (message.author.equals(bot.user)) return;
         if (!message.content.startsWith(PREFIX)) {
             checkLink(message);
@@ -236,9 +278,10 @@ function botSetup() {
                 if (movemeChannel == "") return;
                 if (movemeRole == "") return;
 
-                var hasRole = message.member.roles.has(movemeRole)
+                var hasRole = message.member.roles.has(movemeRole);
+                var channelName = findVoiceChannel(message.guild, movemeChannel, channelName).name;
                 if (message.member.voiceChannel && hasRole) {
-                    console.log("Moving " + message.author.username + " to ") // TODO
+                    logger.info("Moving " + message.author.username + " to " + channelName);
                     message.member.setVoiceChannel(movemeChannel);
                 };
                 message.delete();
@@ -319,6 +362,7 @@ function botSetup() {
                 server.paused = false;
                 server.looping = false;
                 if(message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
+                logger.info('Bot has been stopped by user!');
                 break;
             
             case "vol":
@@ -354,6 +398,7 @@ function botSetup() {
                     message.reply("You are not allowed to use this command!");
                     return;
                 }
+                logger.info('Trying to reset the bot!');
                 resetBot(message);
                 break;   
 
@@ -462,7 +507,10 @@ function botSetup() {
         }
     });
     // Connect bot to discord
+    logger.info('Functionalities ready!');
+    logger.info('Connecting to Discord...');
     bot.login(TOKEN);
 }
 
+logger.info('Setting up functionality...');
 botSetup();

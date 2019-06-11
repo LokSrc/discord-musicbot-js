@@ -3,3 +3,4 @@ package*
 ban*
 scrape*
 *.log
+config-*
