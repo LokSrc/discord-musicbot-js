@@ -10,6 +10,7 @@ Setting bot up
     Windows:
         NOTE: You need to have python set up as environmental variable!
         open install-prerequisites.bat
+        download ffmpeg.exe and copy it to musicbots directory
         Edit config.json to your needs
         open startbot.bat
         bot should now be running!
@@ -43,13 +44,15 @@ Config.json
 
     adminRole - some functionalities like stop and reset are only allowed to members with this role. If this is left empty then everyone can use all commands
 
+    voteSkip - Enables vote skipping.
+
 
 
 Commands:
 
     play - used to add song to queue Ex. "-play https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-    skip - used to skip currently playing song. can be used to skip song from queue also Ex. "-skip 1" skips song from index 1
+    skip - used to skip currently playing song. can be used to skip song from queue also Ex. "-skip 1" skips song from index 1.
 
     stop - used to disconnect bot from voice channel
 

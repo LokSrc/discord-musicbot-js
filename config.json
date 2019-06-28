@@ -8,5 +8,6 @@
     "noLinksChannel": "",
     "movemeChannel": "",
     "movemeRole": "",
-    "adminRole": ""
+    "adminRole": "",
+    "voteSkip": true
 }

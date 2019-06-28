@@ -26,8 +26,8 @@ class Entry {
         return this.voters.length;
     }
 
-    addVote(voter) { // TODO: Check this
-        if (voter in this.voters) {
+    addVote(voter) {
+        if (this.voters.includes(voter)) {
             return false;
         }
         this.voters.push(voter);

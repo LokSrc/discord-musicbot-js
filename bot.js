@@ -56,19 +56,20 @@ const movemeRole = config.movemeRole;
 
 const adminRole = config.adminRole;
 
+const voteSkip = config.voteSkip;
+
 logger.info('Config.json loaded!');
 
 const discordStyles = {"codeblock": "```"};
 
 const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvol/volume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\nshuffle - shuffles current queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
 
-const voteSkip = false;
-
 var radiostatus;
 
 
 /* TODO:
         playlist support
+        additional music providers? -> edit Entry accordingly
 */
 
 function play(connection, message) { 
@@ -126,27 +127,30 @@ function resetBot(message) {
     });
 }
 
-function songQueued(message, link, youtube, index) {
+function songQueued(message, youtube, entry) {
     /*
         Function that will tell the user that song has been succesfully
         queued or in case of error will notice user about it.
     */
     var queue = servers[message.guild.id].queue
-    if (!queue[index] instanceof Entry) return; // TODO: Log this
+    if (!entry instanceof Entry) {
+        logger.error(`Queue included non Entry object! \n${queue[index]}`);
+        return;
+    }
+
     if (youtube) {
-        ytdl.getBasicInfo(link, function(err,info) {
+        ytdl.getBasicInfo(entry.getLink(), function(err,info) {
             if (err) {
                 logger.error(err.name + "\n" + err.message + "\n" + err.stack);
                 return;
             }
             if (info == null) {
                 message.reply('Invalid link (playlists not supported yet)...');
-                queue[index].setName("Not supported");
+                entry.setName("Not supported");
                 return;
             }
             message.channel.send('Queued: ' + info.title);
-            queue[index].setName(info.title);
-            if (index == 0) bot.user.setActivity(info.title);
+            entry.setName(info.title);
         });
     }
 }
@@ -229,14 +233,40 @@ function shuffle(a) {
 
 function findVoiceChannel(guild, id, returnChannel) {
     /* Searches for given voice channel by id
-     * param: guild, id, returnChannel
-     * return: Channel
+     * @param guild where function was called from
+     * @param id of the voiceChannel we are searching for
+     * @param returnChannel variable where value is to be returned to
+     * @return Channel voiceChannel we searched for
      */
     var channels = guild.channels;
     channels.forEach(channel => {
         if (channel.id == id) returnChannel = channel;
     });
     return returnChannel;
+}
+
+function skipVotesNeeded(message, votesNeeded) {
+    /* Returns the amount of skip votes needed to
+     * skipping a queue Entry. 
+     * @param message message which activated this function
+     * @param votesNeeded variable where value is to be returned to
+     * @return votesNeeded amount of votes needed
+     */
+    votesNeeded = 0;
+    try {
+        var voiceConnection = bot.voiceConnections.get(message.guild.id);
+        var channel = voiceConnection.channel.id;
+        message.guild.members.forEach(member => {
+            if (member.voiceChannel != undefined && !member.user.bot && channel == member.voiceChannel.id) votesNeeded++;
+        });
+        votesNeeded = Math.floor(votesNeeded / 2);
+        return votesNeeded;
+
+    } catch (err) {
+        // This error appears if bot is not playing anything on server that reguested skip
+        logger.error(err.name + "\n" + err.message + "\n" + err.stack);
+        return -1;
+    }
 }
 
 if (RADIO != "" && RADIONAME != "") {
@@ -298,8 +328,9 @@ function botSetup() {
                 // Lets queue a song if it is recognized as youtube link
                 var queue = servers[message.guild.id].queue;
                 if (ytdl.validateURL(args[1])) {
-                    queue.push(new Entry(args[1], message.author));
-                    songQueued(message, args[1], true, queue.length - 1); // TODO: Better implementation of this
+                    var entry = new Entry(args[1], message.author);
+                    songQueued(message, true, entry);
+                    queue.push(entry);
                 } else {
                     message.channel.send("Please provide valid link");
                     return;
@@ -336,9 +367,10 @@ function botSetup() {
                         return;
                     } else {
                         server.queue[index].addVote(message.author.id);
-                        var votesNeeded = 10; // TODO: Correct rate
-                        if (votesNeeded < server.queue[index].getVotes()) {
-                            server.queue.splice(index,1);
+                        var votesNeeded = skipVotesNeeded(message, votesNeeded);
+                        if (votesNeeded <= server.queue[index].getVotes()) {
+                            if (index == 0) server.dispatcher.end();
+                            else server.queue.splice(index,1);
                             message.channel.send("Removed song from index: " + index.toString());
                             return;
                         }
@@ -346,6 +378,7 @@ function botSetup() {
                         return;
                 }
                 } catch (e) {
+                    logger.error(e.message);
                     message.reply("Queue doesn't include that index...");
                 }
                 break;
@@ -362,7 +395,7 @@ function botSetup() {
                 server.paused = false;
                 server.looping = false;
                 if(message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
-                logger.info('Bot has been stopped by user!');
+                logger.info(`Bot has been stopped by user: ${message.author.username}`);
                 break;
             
             case "vol":
@@ -414,7 +447,7 @@ function botSetup() {
                 break;
 
             case "queue":
-            case "q":
+            case "q": 
                 if (!servers[message.guild.id]) {
                     message.channel.send("Queue something first.");
                     return;
