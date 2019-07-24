@@ -290,8 +290,8 @@ function botSetup() {
         bot.user.setActivity(STATUS);
         logger.info('Bot is ready!')});
     bot.on("error", (err) => logger.error(err.name + "\n" + err.message + "\n" + err.stack));
-    bot.on("message", function(message) {  
-        logger.info(`Discord message [${message.guild.name}][${message.channel.name}] ${message.author.username}: ${message.content}`);  
+    bot.on("message", function(message) {
+        if (!!message && !!message.guild) logger.info(`Discord message [${message.guild.name}][${message.channel.name}] ${message.author.username}: ${message.content}`);  
         if (message.author.equals(bot.user)) return;
         if (!message.content.startsWith(PREFIX)) {
             checkLink(message);
