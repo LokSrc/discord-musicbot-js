@@ -4,65 +4,13 @@
     Author: Marius Niemenmaa, https://github.com/LokSrc/
 */
 
-const winston = require('winston');
+require('./logger.js');
 
-const logger = winston.createLogger({
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-    ),
-    transports : [
-        new winston.transports.Console({format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.prettyPrint()
-        )}), 
-        new winston.transports.File({filename: "logs/combined.log", timestamp: true}),
-        new winston.transports.File({filename: "logs/error.log", level: 'error', timestamp: true})]
+logger.info('Loading dependencies and config...');
 
-})
+require('./constants.js');
 
-logger.info('Loading dependencies...');
-
-const Discord = require('discord.js');
-
-const ytdl = require('ytdl-core');
-
-const config = require('./config.json');
-
-const Entry = require('./entry.js');
-
-const roasts = require('./roasts.json').roasts.array;
-
-logger.info('Dependencies loaded!');
-logger.info('Loading config.json...');
-
-const TOKEN = config.token;
-
-const PREFIX = config.prefix;
-
-const STATUS = config.status;
-
-const VOLUME = config.volume;
-
-const RADIO = config.radio;
-
-const RADIONAME = config.radioName;
-
-const noLinksChannel = config.noLinksChannel;
-
-const movemeChannel = config.movemeChannel;
-
-const movemeRole = config.movemeRole;
-
-const adminRole = config.adminRole;
-
-const voteSkip = config.voteSkip;
-
-logger.info('Config.json loaded!');
-
-const discordStyles = {"codeblock": "```"};
-
-const helpMsg = "reset/restart - Resets bot in case it has become unresponsive\nroast - Bot takes random roast and roasts your friend!\nhelp - Show all commands\np/play - Used to queue music\nstop - Used to stop all music and empty the queue\nvol/volume - Get/Set volume\ns/skip - Skip current song\nq/queue - Shows queue\nshuffle - shuffles current queue\np/pause - Pauses the player\nr/resume - Resumes paused player\nloop - Sets the current queue to loop\n";
+logger.info('Dependencies and config loaded!');
 
 var radiostatus;
 
@@ -72,7 +20,24 @@ var radiostatus;
         additional music providers? -> edit Entry accordingly
 */
 
+if (RADIO != "" && RADIONAME != "") {
+    logger.info('Radio enabled!');
+    radiostatus = true;
+} else {
+    logger.info('Radio disabled!');
+    radiostatus = false;
+}
+
+var bot = new Discord.Client();
+var servers = {};
+
+logger.info('Loading functions...');
+
 function play(connection, message) { 
+    /* This function is responsible of actually playing the music to guild channel.
+    * @param connection: connection to guild channel
+    * @param message: message which called this function
+    */
     var server = servers[message.guild.id];
     var song = server.queue[0];
 
@@ -113,9 +78,8 @@ function play(connection, message) {
 }
 
 function resetBot(message) {
-    /*
-        Function that will be used if user wants to
-        completely reset the bot for some reason.
+    /* Function that will be used if user wants to completely reset the bot for some reason.
+    * @param message: message which called this function
     */
     message.channel.send("Resetting BOT!")
     .then(() => bot.destroy())
@@ -128,9 +92,10 @@ function resetBot(message) {
 }
 
 function songQueued(message, youtube, entry) {
-    /*
-        Function that will tell the user that song has been succesfully
-        queued or in case of error will notice user about it.
+    /* Responds to user that song has been succesfully queued or in case of error will notice user about it.
+    * @param message: message which called this function
+    * @param youtube: is song from youtube or other platform
+    * @param entry: instance of Entry class which is the currently handled song
     */
     var queue = servers[message.guild.id].queue
     if (!entry instanceof Entry) {
@@ -156,9 +121,8 @@ function songQueued(message, youtube, entry) {
 }
 
 function queueReply(message) {
-    /*
-        Function that will tell the user all the songs in
-        current queue when asked.
+    /* Responds to the user with a message containing all songs in the queue. (Including currently playing one).
+    * @param message: message which called this function
     */
     var server = servers[message.guild.id];
 
@@ -185,7 +149,9 @@ function queueReply(message) {
 }
 
 function initPlayer(message) {
-    // Lets setup player for our server if there is not one
+    /* If there is no player for current guild. This function sets it up.
+    * @param message: message which called this function
+    */
     logger.info(`Initializing player for guild: ${message.guild.name}`)
     if (!servers[message.guild.id]) servers[message.guild.id] = {
         queue: [],
@@ -196,7 +162,9 @@ function initPlayer(message) {
 }
 
 function checkLink(message) {
-    // Checks that links are not posted in channel "noLinksChannel"
+    /* Checks that links are not posted in channel "noLinksChannel". noLinksChannel is set-up from config
+    * @param message: message which called this function
+    */
     if (message.channel.id == noLinksChannel && (message.content.includes('www.') || message.content.includes('http') || message.content.includes('.fi') || message.content.includes('.com') || message.content.includes('.net'))) {
         logger.info('Message containing link deleted!');
         message.author.send('Links are not allowed in this channel!');
@@ -206,7 +174,10 @@ function checkLink(message) {
 }
 
 function playerChecks(message) {
-    // Will verify we can play some music
+    /* Will verify we can play some music
+    * @param message: message which called this function
+    * @return Boolean: determines if bot can play music or not
+    */
     if(!message.member.voiceChannel) {
         message.channel.send("You must be in a voice channel");
         return false;
@@ -217,7 +188,9 @@ function playerChecks(message) {
 
 function shuffle(a) {
     /* Fisher-Yales shuffle algorithm
-     * Shuffles array */
+    * Shuffles array 
+    * @param a variable where value is to be returned to
+    * @return Array shuffled array*/
     var currentSong = a[0];
     a.shift();
     var j, x, i;
@@ -233,11 +206,11 @@ function shuffle(a) {
 
 function findVoiceChannel(guild, id, returnChannel) {
     /* Searches for given voice channel by id
-     * @param guild where function was called from
-     * @param id of the voiceChannel we are searching for
-     * @param returnChannel variable where value is to be returned to
-     * @return Channel voiceChannel we searched for
-     */
+    * @param guild: guild where function was called from
+    * @param id: id of the voiceChannel we are searching for
+    * @param returnChannel: variable where value is to be returned to
+    * @return Channel:  voiceChannel we searched for
+    */
     var channels = guild.channels;
     channels.forEach(channel => {
         if (channel.id == id) returnChannel = channel;
@@ -247,11 +220,11 @@ function findVoiceChannel(guild, id, returnChannel) {
 
 function skipVotesNeeded(message, votesNeeded) {
     /* Returns the amount of skip votes needed to
-     * skipping a queue Entry. 
-     * @param message message which activated this function
-     * @param votesNeeded variable where value is to be returned to
-     * @return votesNeeded amount of votes needed
-     */
+    * skipping a queue Entry. 
+    * @param message: message which activated this function
+    * @param votesNeeded: variable where value is to be returned to
+    * @return votesNeeded: amount of votes needed. -1 stands for error
+    */
     votesNeeded = 0;
     try {
         var voiceConnection = bot.voiceConnections.get(message.guild.id);
@@ -269,16 +242,7 @@ function skipVotesNeeded(message, votesNeeded) {
     }
 }
 
-if (RADIO != "" && RADIONAME != "") {
-    logger.info('Radio enabled!');
-    radiostatus = true;
-} else {
-    logger.info('Radio disabled!');
-    radiostatus = false;
-}
-
-var bot = new Discord.Client();
-var servers = {};
+logger.info('Functions loaded!');
 
 function botSetup() {
     /* 
