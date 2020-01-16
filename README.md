@@ -1,6 +1,6 @@
 This project is simple musicbot used for Discord.
 This project currently supports only youtube links.
-You can contact me on Discord for help! Lokki#8417
+You can contact me on Discord for help! Lokk3d#8417
 
 Before setting bot up you should lookup this site: https://support.discordapp.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-
 
